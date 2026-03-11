@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ionic Bond Builder - Mastery Mode</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --warning: #f39c12;
+            --light: #f4f7f6;
+        }
+
+        body { font-family: 'Segoe UI', sans-serif; background: var(--light); margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        
+        #successOverlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .success-card {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 450px;
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .level-header { text-align: center; margin-bottom: 25px; }
+        .btn-lvl { padding: 10px 18px; border: 2px solid #ddd; background: white; cursor: pointer; border-radius: 8px; margin: 0 5px; font-weight: bold; transition: 0.2s; }
+        .btn-lvl.active { background: var(--secondary); color: white; border-color: var(--secondary); }
+
+        .quest-box { 
+            background: #f8f9fa; 
+            border: 2px solid #dee2e6; 
+            padding: 50px; 
+            border-radius: 15px; 
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .element-name { font-size: 2.5em; font-weight: bold; color: var(--primary); }
+        .plus-sign { font-size: 2.2em; color: #adb5bd; margin: 0 25px; }
+
+        input[type="text"] { 
+            width: 100%; padding: 20px; font-size: 1.8em; text-align: center; 
+            border: 3px solid #ced4da; border-radius: 12px; margin: 20px 0;
+            outline-color: var(--secondary);
+        }
+
+        .btn-main { padding: 18px; width: 100%; border: none; border-radius: 10px; font-size: 1.3em; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-check { background: var(--success); color: white; box-shadow: 0 4px #1e8449; }
+        .btn-check:active { transform: translateY(2px); box-shadow: 0 2px #1e8449; }
+        .btn-reveal { background: var(--warning); color: white; margin-top: 15px; display: none; }
+        
+        .summary-view { display: none; }
+        sub { font-size: 0.6em; bottom: -0.2em; }
+    </style>
+</head>
+<body>
+
+<div id="successOverlay">
+    <div class="success-card">
+        <h1 style="color: var(--success); margin: 0;">✓ Correct!</h1>
+        <h2 id="dispFormula" style="font-size: 3em; margin: 15px 0;"></h2>
+        <p id="dispName" style="color: #6c757d; font-size: 1.2em; font-weight: bold;"></p>
+        <div style="background: #e3f2fd; padding: 15px; border-radius: 10px; margin: 20px 0; text-align: left; line-height: 1.4;">
+            <strong>Lab Insight:</strong> <span id="chemFact"></span>
+        </div>
+        <button class="btn-main btn-check" onclick="closeSuccess()">Next Compound ➡️</button>
+    </div>
+</div>
+
+<div class="container">
+    <div class="level-header">
+        <h1>🧪 Ionic Bond Builder</h1>
+        <div id="lvlBtns">
+            <button class="btn-lvl active" onclick="changeLevel('easy')">Easy</button>
+            <button class="btn-lvl" onclick="changeLevel('medium')">Medium</button>
+            <button class="btn-lvl" onclick="changeLevel('hard')">Hard</button>
+            <button class="btn-lvl" onclick="changeLevel('extreme')">Extreme</button>
+        </div>
+    </div>
+
+    <div id="game-ui">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 15px; color: #6c757d; font-weight: bold;">
+            <span id="progressText">Question 1 / 20</span>
+            <span id="scoreText">Score: 0</span>
+        </div>
+
+        <div class="quest-box">
+            <span id="catDisplay" class="element-name">---</span>
+            <span class="plus-sign">+</span>
+            <span id="aniDisplay" class="element-name">---</span>
+        </div>
+
+        <input type="text" id="formulaInput" placeholder="Type formula..." spellcheck="false" autocomplete="off">
+        <button id="mainCheckBtn" class="btn-main btn-check" onclick="handleCheck()">Check Answer</button>
+        <button id="revealBtn" class="btn-main btn-reveal" onclick="handleReveal()">Stuck? Reveal Formula</button>
+        
+        <p style="text-align: center; color: #6c757d; font-size: 0.9em; margin-top: 15px;">
+            Tip: Metal first, no spaces. Use 'Enter' to check.
+        </p>
+    </div>
+
+    <div id="summary-ui" class="summary-view">
+        <h2 style="border-bottom: 3px solid var(--primary); padding-bottom: 10px;">Lab Report Summary</h2>
+        <h3 id="finalResultText"></h3>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;" border="1">
+            <thead style="background: #f8f9fa;">
+                <tr><th style="padding: 12px;">Reactants</th><th style="padding: 12px;">Formula</th><th style="padding: 12px;">Status</th></tr>
+            </thead>
+            <tbody id="reportTableBody"></tbody>
+        </table>
+        <button class="btn-main" style="margin-top: 25px; background: var(--primary); color: white;" onclick="window.print()">Print This Report</button>
+        <button class="btn-main" style="margin-top: 10px; background: #adb5bd; color: white;" onclick="location.reload()">Start Over</button>
+    </div>
+</div>
+
+<script>
+    const quizData = {
+        easy: [
+            { c: "Sodium", a: "Chloride", ans: "NaCl", fact: "Common table salt. Na is Group 1 (+1) and Cl is Group 17 (-1)." },
+            { c: "Magnesium", a: "Oxide", ans: "MgO", fact: "Magnesium (+2) and Oxygen (-2) balance perfectly in a 1:1 ratio." },
+            { c: "Potassium", a: "Iodide", ans: "KI", fact: "Used in medicine to prevent radiation absorption by the thyroid." },
+            { c: "Calcium", a: "Oxide", ans: "CaO", fact: "Also known as quicklime, it reacts strongly with water." },
+            { c: "Silver", a: "Chloride", ans: "AgCl", fact: "Found in nature as the mineral chlorargyrite." },
+            { c: "Lithium", a: "Fluoride", ans: "LiF", fact: "This bond has one of the highest lattice energies known!" },
+            { c: "Barium", a: "Sulfide", ans: "BaS", fact: "Used in electronics and high-purity chemicals." },
+            { c: "Zinc", a: "Oxide", ans: "ZnO", fact: "Used in sunscreens to block harmful UV rays." },
+            { c: "Sodium", a: "Fluoride", ans: "NaF", fact: "Added to public water supplies to prevent tooth decay." },
+            { c: "Cesium", a: "Chloride", ans: "CsCl", fact: "Standard model for studying simple cubic crystal structures." },
+            { c: "Potassium", a: "Bromide", ans: "KBr", fact: "Used in the 1800s as a sedative and anticonvulsant." },
+            { c: "Strontium", a: "Oxide", ans: "SrO", fact: "Formed when strontium metal is exposed to air." },
+            { c: "Rubidium", a: "Iodide", ans: "RbI", fact: "A white crystalline powder used in chemical research." },
+            { c: "Magnesium", a: "Sulfide", ans: "MgS", fact: "A lab-grown material with semiconductor properties." },
+            { c: "Beryllium", a: "Oxide", ans: "BeO", fact: "An unusual ceramic that conducts heat but not electricity." },
+            { c: "Silver", a: "Bromide", ans: "AgBr", fact: "The essential light-sensitive chemical in old camera film." },
+            { c: "Calcium", a: "Sulfide", ans: "CaS", fact: "Used as a phosphor in luminous dials." },
+            { c: "Sodium", a: "Iodide", ans: "NaI", fact: "Added to table salt to help your thyroid function." },
+            { c: "Zinc", a: "Sulfide", ans: "ZnS", fact: "Used to make glowing watch hands and X-ray screens." },
+            { c: "Potassium", a: "Fluoride", ans: "KF", fact: "A primary source of the fluoride ion in industrial chemistry." }
+        ],
+        medium: [
+            { c: "Calcium", a: "Chloride", ans: "CaCl2", fact: "Calcium (+2) needs two Chlorines (-1) to balance." },
+            { c: "Sodium", a: "Oxide", ans: "Na2O", fact: "Two Sodiums (+1) are needed to balance one Oxygen (-2)." },
+            { c: "Aluminum", a: "Chloride", ans: "AlCl3", fact: "Aluminum is Group 13 (+3), needing three Cl- ions." },
+            { c: "Magnesium", a: "Fluoride", ans: "MgF2", fact: "Used as an anti-reflective coating for telescope lenses." },
+            { c: "Potassium", a: "Sulfide", ans: "K2S", fact: "Sulfur is Group 16 (-2), requiring two K+ ions." },
+            { c: "Barium", a: "Bromide", ans: "BaBr2", fact: "Like Calcium, Barium is Group 2 (+2)." },
+            { c: "Lithium", a: "Nitride", ans: "Li3N", fact: "Nitrogen is Group 15 (-3), needing three Li+ ions." },
+            { c: "Aluminum", a: "Oxide", ans: "Al2O3", fact: "The 2:3 ratio is a classic 'criss-cross' result!" },
+            { c: "Calcium", a: "Nitride", ans: "Ca3N2", fact: "Three Ca (+2) and two N (-3) create a neutral compound." },
+            { c: "Zinc", a: "Chloride", ans: "ZnCl2", fact: "Used in dry cell batteries as an electrolyte." },
+            { c: "Gallium", a: "Oxide", ans: "Ga2O3", fact: "Used in power electronics and solar cells." },
+            { c: "Sodium", a: "Nitride", ans: "Na3N", fact: "An extremely reactive and unstable compound." },
+            { c: "Aluminum", a: "Fluoride", ans: "AlF3", fact: "Added to aluminum production to lower the melting point." },
+            { c: "Magnesium", a: "Nitride", ans: "Mg3N2", fact: "Reacts with water to release ammonia gas." },
+            { c: "Barium", a: "Nitride", ans: "Ba3N2", fact: "A high-temperature ceramic material." },
+            { c: "Strontium", a: "Chloride", ans: "SrCl2", fact: "Produces bright red flames in fireworks." },
+            { c: "Lithium", a: "Oxide", ans: "Li2O", fact: "Used as a flux in glass manufacturing." },
+            { c: "Aluminum", a: "Sulfide", ans: "Al2S3", fact: "Smells like rotten eggs if exposed to moisture!" },
+            { c: "Zinc", a: "Iodide", ans: "ZnI2", fact: "Used as an X-ray opaque contrast agent." },
+            { c: "Cesium", a: "Oxide", ans: "Cs2O", fact: "One of the most reactive metal oxides." }
+        ],
+        hard: [
+            { c: "Sodium", a: "Sulfate", ans: "Na2SO4", fact: "Sulfate is (SO4) with a -2 charge." },
+            { c: "Calcium", a: "Carbonate", ans: "CaCO3", fact: "Main component of eggshells and limestone." },
+            { c: "Ammonium", a: "Chloride", ans: "NH4Cl", fact: "Ammonium (NH4) is a rare polyatomic with a +1 charge." },
+            { c: "Magnesium", a: "Nitrate", ans: "Mg(NO3)2", fact: "Parentheses are needed for polyatomics if the subscript > 1." },
+            { c: "Potassium", a: "Phosphate", ans: "K3PO4", fact: "Phosphate (PO4) has a high -3 charge." },
+            { c: "Aluminum", a: "Hydroxide", ans: "Al(OH)3", fact: "Commonly used in heartburn medications." },
+            { c: "Lithium", a: "Carbonate", ans: "Li2CO3", fact: "Used in medicine and glass manufacturing." },
+            { c: "Barium", a: "Sulfate", ans: "BaSO4", fact: "Used in 'barium milk' for digestive tract X-rays." },
+            { c: "Ammonium", a: "Nitrate", ans: "NH4NO3", fact: "Used in fertilizers and cold packs." },
+            { c: "Calcium", a: "Phosphate", ans: "Ca3(PO4)2", fact: "The primary mineral found in human teeth and bones." },
+            { c: "Sodium", a: "Hydroxide", ans: "NaOH", fact: "Known as lye or caustic soda; used in soap making." },
+            { c: "Zinc", a: "Sulfate", ans: "ZnSO4", fact: "Used as a dietary supplement for zinc deficiency." },
+            { c: "Aluminum", a: "Nitrate", ans: "Al(NO3)3", fact: "Needs 3 nitrate groups to balance the +3 aluminum." },
+            { c: "Potassium", a: "Hydroxide", ans: "KOH", fact: "Used to produce liquid soaps and alkaline batteries." },
+            { c: "Calcium", a: "Hydroxide", ans: "Ca(OH)2", fact: "Used in construction mortar and water treatment." },
+            { c: "Magnesium", a: "Carbonate", ans: "MgCO3", fact: "The 'chalk' gymnasts use to keep their hands dry." },
+            { c: "Ammonium", a: "Sulfate", ans: "(NH4)2SO4", fact: "Used in soil fertilizer to lower pH levels." },
+            { c: "Sodium", a: "Carbonate", ans: "Na2CO3", fact: "Washing soda; helps remove grease and stains." },
+            { c: "Silver", a: "Nitrate", ans: "AgNO3", fact: "Used to detect chloride ions in chemistry labs." },
+            { c: "Aluminum", a: "Sulfate", ans: "Al2(SO4)3", fact: "Used to make paper and in water purification." }
+        ],
+        extreme: [
+            { c: "Iron (III)", a: "Oxide", ans: "Fe2O3", fact: "Common rust! Iron (III) means the charge is +3." },
+            { c: "Copper (II)", a: "Sulfate", ans: "CuSO4", fact: "Famous for its vibrant blue crystals." },
+            { c: "Iron (II)", a: "Chloride", ans: "FeCl2", fact: "Iron (II) indicates a +2 charge." },
+            { c: "Lead (IV)", a: "Oxide", ans: "PbO2", fact: "Lead (IV) is +4, Oxygen is -2; reduces to 1:2 ratio." },
+            { c: "Copper (I)", a: "Oxide", ans: "Cu2O", fact: "A reddish powder used as a semiconductor." },
+            { c: "Chromium (III)", a: "Sulfate", ans: "Cr2(SO4)3", fact: "Used in tanning leather and chrome plating." },
+            { c: "Tin (IV)", a: "Chloride", ans: "SnCl4", fact: "A clear liquid used in glass coatings." },
+            { c: "Iron (III)", a: "Sulfate", ans: "Fe2(SO4)3", fact: "Used as a coagulant in wastewater treatment." },
+            { c: "Copper (II)", a: "Hydroxide", ans: "Cu(OH)2", fact: "A greenish-blue solid used as a pigment." },
+            { c: "Lead (II)", a: "Nitrate", ans: "Pb(NO3)2", fact: "One of the few soluble lead compounds." },
+            { c: "Tin (II)", a: "Fluoride", ans: "SnF2", fact: "The technical name for 'Stannous Fluoride' in toothpaste." },
+            { c: "Chromium (III)", a: "Chloride", ans: "CrCl3", fact: "Used as a catalyst in organic chemistry." },
+            { c: "Iron (II)", a: "Hydroxide", ans: "Fe(OH)2", fact: "Formed when iron rusts underwater." },
+            { c: "Copper (I)", a: "Sulfide", ans: "Cu2S", fact: "A mineral called chalcocite." },
+            { c: "Lead (IV)", a: "Sulfate", ans: "Pb(SO4)2", fact: "Formed in high-voltage lead-acid batteries." },
+            { c: "Iron (III)", a: "Phosphate", ans: "FePO4", fact: "Used in pesticides to kill snails and slugs." },
+            { c: "Copper (II)", a: "Carbonate", ans: "CuCO3", fact: "Gives old copper roofs their green 'patina'." },
+            { c: "Tin (IV)", a: "Oxide", ans: "SnO2", fact: "Used in polishing glass and ceramic glazes." },
+            { c: "Chromium (III)", a: "Oxide", ans: "Cr2O3", fact: "Known as 'Chrome Green' in oil paints." },
+            { c: "Iron (II)", a: "Nitrate", ans: "Fe(NO3)2", fact: "A reagent used in specialized dye production." }
+        ]
+    };
+
+    let curLevel = 'easy';
+    let curIndex = 0;
+    let score = 0;
+    let fails = 0;
+    let log = [];
+
+    const inputField = document.getElementById('formulaInput');
+
+    function changeLevel(lvl) {
+        curLevel = lvl;
+        curIndex = 0;
+        score = 0;
+        log = [];
+        document.querySelectorAll('.btn-lvl').forEach(b => {
+            b.classList.remove('active');
+            if(b.innerText.toLowerCase() === lvl) b.classList.add('active');
+        });
+        document.getElementById('summary-ui').style.display = 'none';
+        document.getElementById('game-ui').style.display = 'block';
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        const q = quizData[curLevel][curIndex];
+        fails = 0;
+        document.getElementById('progressText').innerText = `Question ${curIndex + 1} / 20`;
+        document.getElementById('scoreText').innerText = `Score: ${score}`;
+        document.getElementById('catDisplay').innerText = q.c;
+        document.getElementById('aniDisplay').innerText = q.a;
+        inputField.value = '';
+        document.getElementById('revealBtn').style.display = 'none';
+        inputField.focus();
+    }
+
+    function handleCheck() {
+        const val = inputField.value.trim();
+        const q = quizData[curLevel][curIndex];
+
+        if (!val) return;
+
+        // Strict symbol check, but flexible with capitalization if they get the letters right
+        if (val.toLowerCase() === q.ans.toLowerCase()) {
+            score++;
+            log.push({ name: `${q.c} + ${q.a}`, formula: q.ans, status: "CORRECT" });
+            document.getElementById('dispFormula').innerHTML = q.ans.replace(/(\d+)/g, "<sub>$1</sub>");
+            document.getElementById('dispName').innerText = `${q.c} ${q.a}`;
+            document.getElementById('chemFact').innerText = q.fact;
+            document.getElementById('successOverlay').style.display = 'flex';
+        } else {
+            fails++;
+            alert("Incorrect. Think about the charges for these elements!");
+            if (fails >= 2) document.getElementById('revealBtn').style.display = 'block';
+        }
+    }
+
+    function handleReveal() {
+        const q = quizData[curLevel][curIndex];
+        inputField.value = q.ans;
+        log.push({ name: `${q.c} + ${q.a}`, formula: q.ans, status: "REVEALED" });
+    }
+
+    function closeSuccess() {
+        document.getElementById('successOverlay').style.display = 'none';
+        curIndex++;
+        if (curIndex < 20) {
+            loadQuestion();
+        } else {
+            showFinal();
+        }
+    }
+
+    function showFinal() {
+        document.getElementById('game-ui').style.display = 'none';
+        document.getElementById('summary-ui').style.display = 'block';
+        document.getElementById('finalResultText').innerText = `Final Mastery Score: ${score} / 20`;
+        
+        const tbody = document.getElementById('reportTableBody');
+        tbody.innerHTML = '';
+        log.forEach(item => {
+            const row = `<tr>
+                <td style="padding:10px;">${item.name}</td>
+                <td style="padding:10px;">${item.formula}</td>
+                <td style="padding:10px; font-weight:bold; color:${item.status === 'CORRECT' ? 'green' : 'orange'}">${item.status}</td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+    }
+
+    // Allow "Enter" key to submit
+    inputField.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleCheck();
+    });
+
+    // Start
+    loadQuestion();
+</script>
+</body>
+</html>
